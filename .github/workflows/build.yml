@@ -34,15 +34,79 @@ jobs:
         run: |
           pip install requests python-dotenv pyinstaller
 
+      - name: Create PyInstaller spec file
+        run: |
+          echo 'import os' > openshockclock.spec
+          echo 'from PyInstaller.utils.hooks import collect_all' >> openshockclock.spec
+          echo '' >> openshockclock.spec
+          echo 'datas = []' >> openshockclock.spec
+          echo 'binaries = []' >> openshockclock.spec
+          echo 'hiddenimports = []' >> openshockclock.spec
+          echo '' >> openshockclock.spec
+          echo '# Collect GTK data' >> openshockclock.spec
+          echo 'gtk_data = []' >> openshockclock.spec
+          echo 'for pkg in ["gi", "adw"]:' >> openshockclock.spec
+          echo '    collect_result = collect_all(pkg)' >> openshockclock.spec
+          echo '    datas.extend(collect_result[0])' >> openshockclock.spec
+          echo '    binaries.extend(collect_result[1])' >> openshockclock.spec
+          echo '    hiddenimports.extend(collect_result[2])' >> openshockclock.spec
+          echo '' >> openshockclock.spec
+          echo '# Add icons directory' >> openshockclock.spec
+          echo 'datas.append(("icons", "icons"))' >> openshockclock.spec
+          echo '' >> openshockclock.spec
+          echo 'a = Analysis(["openshockclock.py"],' >> openshockclock.spec
+          echo '    pathex=[],' >> openshockclock.spec
+          echo '    binaries=binaries,' >> openshockclock.spec
+          echo '    datas=datas,' >> openshockclock.spec
+          echo '    hiddenimports=hiddenimports,' >> openshockclock.spec
+          echo '    hookspath=[],' >> openshockclock.spec
+          echo '    hooksconfig={},' >> openshockclock.spec
+          echo '    runtime_hooks=[],' >> openshockclock.spec
+          echo '    excludes=[],' >> openshockclock.spec
+          echo '    win_no_prefer_redirects=False,' >> openshockclock.spec
+          echo '    win_private_assemblies=False,' >> openshockclock.spec
+          echo '    noarchive=False)' >> openshockclock.spec
+          echo '' >> openshockclock.spec
+          echo 'pyz = PYZ(a.pure)' >> openshockclock.spec
+          echo '' >> openshockclock.spec
+          echo 'exe = EXE(pyz,' >> openshockclock.spec
+          echo '    a.scripts,' >> openshockclock.spec
+          echo '    a.binaries,' >> openshockclock.spec
+          echo '    a.datas,' >> openshockclock.spec
+          echo '    [],' >> openshockclock.spec
+          echo '    name="OpenShockClock",' >> openshockclock.spec
+          echo '    debug=False,' >> openshockclock.spec
+          echo '    bootloader_ignore_signals=False,' >> openshockclock.spec
+          echo '    strip=False,' >> openshockclock.spec
+          echo '    upx=True,' >> openshockclock.spec
+          echo '    upx_exclude=[],' >> openshockclock.spec
+          echo '    runtime_tmpdir=None,' >> openshockclock.spec
+          echo '    console=False,' >> openshockclock.spec
+          echo '    disable_windowed_traceback=False,' >> openshockclock.spec
+          echo '    target_arch=None,' >> openshockclock.spec
+          echo '    codesign_identity=None,' >> openshockclock.spec
+          echo '    entitlements_file=None)' >> openshockclock.spec
+
       - name: Build with PyInstaller
         run: |
-          pyinstaller --onefile --windowed --add-data "icons:icons" openshockclock-gtk.py
+          pyinstaller openshockclock.spec
+
+      - name: Package GTK Runtime
+        run: |
+          mkdir -p dist/runtime
+          cp -r /mingw64/lib/gdk-pixbuf-2.0 dist/runtime/
+          cp -r /mingw64/lib/girepository-1.0 dist/runtime/
+          cp -r /mingw64/share/glib-2.0 dist/runtime/
+          cp -r /mingw64/share/icons dist/runtime/
+          cp -r /mingw64/share/gtk-4.0 dist/runtime/
+          cp -r /mingw64/share/adwaita-1 dist/runtime/
 
       - name: Upload Build Artifacts
         uses: actions/upload-artifact@v3
         with:
           name: OpenShockClock-Windows
           path: |
-            dist/*.exe
+            dist/OpenShockClock.exe
+            dist/runtime/**
             README.md
             LICENSE
