@@ -91,22 +91,45 @@ jobs:
         run: |
           pyinstaller openshockclock.spec
 
+      - name: Check GTK directories
+        run: |
+          ls -la /mingw64/share/
+          ls -la /mingw64/lib/
+
       - name: Package GTK Runtime
         run: |
-          mkdir -p dist/runtime
-          cp -r /mingw64/lib/gdk-pixbuf-2.0 dist/runtime/
-          cp -r /mingw64/lib/girepository-1.0 dist/runtime/
-          cp -r /mingw64/share/glib-2.0 dist/runtime/
-          cp -r /mingw64/share/icons dist/runtime/
-          cp -r /mingw64/share/gtk-4.0 dist/runtime/
-          cp -r /mingw64/share/libadwaita-1 dist/runtime/
+          mkdir -p dist/runtime/lib
+          mkdir -p dist/runtime/share
+
+          # Copy required directories if they exist
+          for dir in gdk-pixbuf-2.0 girepository-1.0; do
+            if [ -d "/mingw64/lib/$dir" ]; then
+              cp -r "/mingw64/lib/$dir" dist/runtime/lib/
+            fi
+          done
+
+          for dir in glib-2.0 icons gtk-4.0 adwaita-1; do
+            if [ -d "/mingw64/share/$dir" ]; then
+              cp -r "/mingw64/share/$dir" dist/runtime/share/
+            fi
+          done
+
+          # Copy DLLs
           cp -r /mingw64/bin/*.dll dist/runtime/
 
       - name: Create environment file
         run: |
-          echo "GI_TYPELIB_PATH=runtime/girepository-1.0" > dist/env.txt
-          echo "GDK_PIXBUF_MODULE_FILE=runtime/gdk-pixbuf-2.0/2.10.0/loaders.cache" >> dist/env.txt
-          echo "GSETTINGS_SCHEMA_DIR=runtime/glib-2.0/schemas" >> dist/env.txt
+          echo "GI_TYPELIB_PATH=runtime/lib/girepository-1.0" > dist/env.txt
+          echo "GDK_PIXBUF_MODULE_FILE=runtime/lib/gdk-pixbuf-2.0/2.10.0/loaders.cache" >> dist/env.txt
+          echo "GSETTINGS_SCHEMA_DIR=runtime/share/glib-2.0/schemas" >> dist/env.txt
+
+      - name: Create launcher
+        run: |
+          echo '@echo off' > dist/run.bat
+          echo 'set GI_TYPELIB_PATH=%~dp0runtime/lib/girepository-1.0' >> dist/run.bat
+          echo 'set GDK_PIXBUF_MODULE_FILE=%~dp0runtime/lib/gdk-pixbuf-2.0/2.10.0/loaders.cache' >> dist/run.bat
+          echo 'set GSETTINGS_SCHEMA_DIR=%~dp0runtime/share/glib-2.0/schemas' >> dist/run.bat
+          echo 'start "" "%~dp0OpenShockClock.exe"' >> dist/run.bat
 
       - name: Upload Build Artifacts
         uses: actions/upload-artifact@v3
@@ -116,5 +139,6 @@ jobs:
             dist/OpenShockClock.exe
             dist/runtime/**
             dist/env.txt
+            dist/run.bat
             README.md
             LICENSE
