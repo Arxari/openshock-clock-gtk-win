@@ -2,9 +2,9 @@ name: Build OpenShockClock
 
 on:
   push:
-    branches: [main]
+    branches: [ main ]
   pull_request:
-    branches: [main]
+    branches: [ main ]
   workflow_dispatch:
 
 jobs:
@@ -15,130 +15,106 @@ jobs:
         shell: msys2 {0}
 
     steps:
-      - uses: actions/checkout@v4
+    - uses: actions/checkout@v4
+    
+    - name: Setup MSYS2
+      uses: msys2/setup-msys2@v2
+      with:
+        msystem: MINGW64
+        update: true
+        install: >-
+          mingw-w64-x86_64-gtk4
+          mingw-w64-x86_64-libadwaita
+          mingw-w64-x86_64-python
+          mingw-w64-x86_64-python-gobject
+          mingw-w64-x86_64-python-pip
+          mingw-w64-x86_64-gcc
+          mingw-w64-x86_64-gobject-introspection
+          mingw-w64-x86_64-adwaita-icon-theme
+          
+    - name: Install Python dependencies
+      run: |
+        pip install requests python-dotenv pyinstaller
 
-      - name: Setup MSYS2
-        uses: msys2/setup-msys2@v2
-        with:
-          msystem: MINGW64
-          update: true
-          install: >-
-            mingw-w64-x86_64-gtk4
-            mingw-w64-x86_64-libadwaita
-            mingw-w64-x86_64-python
-            mingw-w64-x86_64-python-gobject
-            mingw-w64-x86_64-python-pip
-            mingw-w64-x86_64-gcc
+    - name: Create PyInstaller hooks
+      run: |
+        mkdir -p hooks
+        echo 'from PyInstaller.utils.hooks import collect_all' > hooks/hook-gi.py
+        echo 'datas, binaries, hiddenimports = collect_all("gi")' >> hooks/hook-gi.py
+        
+        echo 'from PyInstaller.utils.hooks import collect_all' > hooks/hook-adw.py
+        echo 'datas, binaries, hiddenimports = collect_all("adw")' >> hooks/hook-adw.py
 
-      - name: Install Python dependencies
-        run: |
-          pip install requests python-dotenv pyinstaller
+    - name: Create PyInstaller spec file
+      run: |
+        echo 'block_cipher = None' > openshockclock.spec
+        echo 'a = Analysis(["openshockclock.py"],' >> openshockclock.spec
+        echo '    pathex=[],' >> openshockclock.spec
+        echo '    binaries=[],' >> openshockclock.spec
+        echo '    datas=[("icons", "icons")],' >> openshockclock.spec
+        echo '    hiddenimports=["gi", "adw"],' >> openshockclock.spec
+        echo '    hookspath=["hooks"],' >> openshockclock.spec
+        echo '    hooksconfig={},' >> openshockclock.spec
+        echo '    runtime_hooks=[],' >> openshockclock.spec
+        echo '    excludes=[],' >> openshockclock.spec
+        echo '    win_no_prefer_redirects=False,' >> openshockclock.spec
+        echo '    win_private_assemblies=False,' >> openshockclock.spec
+        echo '    cipher=block_cipher,' >> openshockclock.spec
+        echo '    noarchive=False)' >> openshockclock.spec
+        echo 'pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)' >> openshockclock.spec
+        echo 'exe = EXE(pyz,' >> openshockclock.spec
+        echo '    a.scripts,' >> openshockclock.spec
+        echo '    [],' >> openshockclock.spec
+        echo '    exclude_binaries=True,' >> openshockclock.spec
+        echo '    name="OpenShockClock",' >> openshockclock.spec
+        echo '    debug=False,' >> openshockclock.spec
+        echo '    bootloader_ignore_signals=False,' >> openshockclock.spec
+        echo '    strip=False,' >> openshockclock.spec
+        echo '    upx=True,' >> openshockclock.spec
+        echo '    console=True)' >> openshockclock.spec
+        echo 'coll = COLLECT(exe,' >> openshockclock.spec
+        echo '    a.binaries,' >> openshockclock.spec
+        echo '    a.zipfiles,' >> openshockclock.spec
+        echo '    a.datas,' >> openshockclock.spec
+        echo '    strip=False,' >> openshockclock.spec
+        echo '    upx=True,' >> openshockclock.spec
+        echo '    upx_exclude=[],' >> openshockclock.spec
+        echo '    name="OpenShockClock")' >> openshockclock.spec
 
-      - name: Create PyInstaller spec file
-        run: |
-          echo 'import os' > openshockclock.spec
-          echo 'from PyInstaller.utils.hooks import collect_all' >> openshockclock.spec
-          echo '' >> openshockclock.spec
-          echo 'datas = []' >> openshockclock.spec
-          echo 'binaries = []' >> openshockclock.spec
-          echo 'hiddenimports = []' >> openshockclock.spec
-          echo '' >> openshockclock.spec
-          echo '# Collect GTK data' >> openshockclock.spec
-          echo 'gtk_data = []' >> openshockclock.spec
-          echo 'for pkg in ["gi", "adw"]:' >> openshockclock.spec
-          echo '    collect_result = collect_all(pkg)' >> openshockclock.spec
-          echo '    datas.extend(collect_result[0])' >> openshockclock.spec
-          echo '    binaries.extend(collect_result[1])' >> openshockclock.spec
-          echo '    hiddenimports.extend(collect_result[2])' >> openshockclock.spec
-          echo '' >> openshockclock.spec
-          echo '# Add icons directory' >> openshockclock.spec
-          echo 'datas.append(("icons", "icons"))' >> openshockclock.spec
-          echo '' >> openshockclock.spec
-          echo 'a = Analysis(["openshockclock.py"],' >> openshockclock.spec
-          echo '    pathex=[],' >> openshockclock.spec
-          echo '    binaries=binaries,' >> openshockclock.spec
-          echo '    datas=datas,' >> openshockclock.spec
-          echo '    hiddenimports=hiddenimports,' >> openshockclock.spec
-          echo '    hookspath=[],' >> openshockclock.spec
-          echo '    hooksconfig={},' >> openshockclock.spec
-          echo '    runtime_hooks=[],' >> openshockclock.spec
-          echo '    excludes=[],' >> openshockclock.spec
-          echo '    win_no_prefer_redirects=False,' >> openshockclock.spec
-          echo '    win_private_assemblies=False,' >> openshockclock.spec
-          echo '    noarchive=False)' >> openshockclock.spec
-          echo '' >> openshockclock.spec
-          echo 'pyz = PYZ(a.pure)' >> openshockclock.spec
-          echo '' >> openshockclock.spec
-          echo 'exe = EXE(pyz,' >> openshockclock.spec
-          echo '    a.scripts,' >> openshockclock.spec
-          echo '    a.binaries,' >> openshockclock.spec
-          echo '    a.datas,' >> openshockclock.spec
-          echo '    [],' >> openshockclock.spec
-          echo '    name="OpenShockClock",' >> openshockclock.spec
-          echo '    debug=False,' >> openshockclock.spec
-          echo '    bootloader_ignore_signals=False,' >> openshockclock.spec
-          echo '    strip=False,' >> openshockclock.spec
-          echo '    upx=True,' >> openshockclock.spec
-          echo '    upx_exclude=[],' >> openshockclock.spec
-          echo '    runtime_tmpdir=None,' >> openshockclock.spec
-          echo '    console=False,' >> openshockclock.spec
-          echo '    disable_windowed_traceback=False,' >> openshockclock.spec
-          echo '    target_arch=None,' >> openshockclock.spec
-          echo '    codesign_identity=None,' >> openshockclock.spec
-          echo '    entitlements_file=None)' >> openshockclock.spec
+    - name: Build with PyInstaller
+      run: |
+        pyinstaller openshockclock.spec
+        
+    - name: Package GTK Runtime
+      run: |
+        mkdir -p dist/OpenShockClock/runtime/lib
+        mkdir -p dist/OpenShockClock/runtime/share
+        
+        # Copy GObject Introspection files
+        cp -r /mingw64/lib/girepository-1.0 dist/OpenShockClock/runtime/lib/
+        
+        # Copy GTK and theme files
+        cp -r /mingw64/share/glib-2.0 dist/OpenShockClock/runtime/share/
+        cp -r /mingw64/share/icons dist/OpenShockClock/runtime/share/
+        cp -r /mingw64/share/gtk-4.0 dist/OpenShockClock/runtime/share/
+        cp -r /mingw64/lib/gdk-pixbuf-2.0 dist/OpenShockClock/runtime/lib/
+        
+        # Copy required DLLs
+        cp /mingw64/bin/*.dll dist/OpenShockClock/
 
-      - name: Build with PyInstaller
-        run: |
-          pyinstaller openshockclock.spec
-
-      - name: Check GTK directories
-        run: |
-          ls -la /mingw64/share/
-          ls -la /mingw64/lib/
-
-      - name: Package GTK Runtime
-        run: |
-          mkdir -p dist/runtime/lib
-          mkdir -p dist/runtime/share
-
-          # Copy required directories if they exist
-          for dir in gdk-pixbuf-2.0 girepository-1.0; do
-            if [ -d "/mingw64/lib/$dir" ]; then
-              cp -r "/mingw64/lib/$dir" dist/runtime/lib/
-            fi
-          done
-
-          for dir in glib-2.0 icons gtk-4.0 adwaita-1; do
-            if [ -d "/mingw64/share/$dir" ]; then
-              cp -r "/mingw64/share/$dir" dist/runtime/share/
-            fi
-          done
-
-          # Copy DLLs
-          cp -r /mingw64/bin/*.dll dist/runtime/
-
-      - name: Create environment file
-        run: |
-          echo "GI_TYPELIB_PATH=runtime/lib/girepository-1.0" > dist/env.txt
-          echo "GDK_PIXBUF_MODULE_FILE=runtime/lib/gdk-pixbuf-2.0/2.10.0/loaders.cache" >> dist/env.txt
-          echo "GSETTINGS_SCHEMA_DIR=runtime/share/glib-2.0/schemas" >> dist/env.txt
-
-      - name: Create launcher
-        run: |
-          echo '@echo off' > dist/run.bat
-          echo 'set GI_TYPELIB_PATH=%~dp0runtime/lib/girepository-1.0' >> dist/run.bat
-          echo 'set GDK_PIXBUF_MODULE_FILE=%~dp0runtime/lib/gdk-pixbuf-2.0/2.10.0/loaders.cache' >> dist/run.bat
-          echo 'set GSETTINGS_SCHEMA_DIR=%~dp0runtime/share/glib-2.0/schemas' >> dist/run.bat
-          echo 'start "" "%~dp0OpenShockClock.exe"' >> dist/run.bat
-
-      - name: Upload Build Artifacts
-        uses: actions/upload-artifact@v3
-        with:
-          name: OpenShockClock-Windows
-          path: |
-            dist/OpenShockClock.exe
-            dist/runtime/**
-            dist/env.txt
-            dist/run.bat
-            README.md
-            LICENSE
+    - name: Create launcher
+      run: |
+        echo '@echo off' > dist/OpenShockClock/run.bat
+        echo 'set "SCRIPT_DIR=%~dp0"' >> dist/OpenShockClock/run.bat
+        echo 'set "GI_TYPELIB_PATH=%SCRIPT_DIR%runtime/lib/girepository-1.0"' >> dist/OpenShockClock/run.bat
+        echo 'set "GDK_PIXBUF_MODULE_FILE=%SCRIPT_DIR%runtime/lib/gdk-pixbuf-2.0/2.10.0/loaders.cache"' >> dist/OpenShockClock/run.bat
+        echo 'set "GSETTINGS_SCHEMA_DIR=%SCRIPT_DIR%runtime/share/glib-2.0/schemas"' >> dist/OpenShockClock/run.bat
+        echo 'set "XDG_DATA_DIRS=%SCRIPT_DIR%runtime/share"' >> dist/OpenShockClock/run.bat
+        echo 'cd /d "%SCRIPT_DIR%"' >> dist/OpenShockClock/run.bat
+        echo 'start "" "OpenShockClock.exe"' >> dist/OpenShockClock/run.bat
+        
+    - name: Upload Build Artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: OpenShockClock-Windows
+        path: dist/OpenShockClock
