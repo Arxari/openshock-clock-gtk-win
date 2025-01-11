@@ -99,7 +99,14 @@ jobs:
           cp -r /mingw64/share/glib-2.0 dist/runtime/
           cp -r /mingw64/share/icons dist/runtime/
           cp -r /mingw64/share/gtk-4.0 dist/runtime/
-          cp -r /mingw64/share/adwaita-1 dist/runtime/
+          cp -r /mingw64/share/libadwaita-1 dist/runtime/
+          cp -r /mingw64/bin/*.dll dist/runtime/
+
+      - name: Create environment file
+        run: |
+          echo "GI_TYPELIB_PATH=runtime/girepository-1.0" > dist/env.txt
+          echo "GDK_PIXBUF_MODULE_FILE=runtime/gdk-pixbuf-2.0/2.10.0/loaders.cache" >> dist/env.txt
+          echo "GSETTINGS_SCHEMA_DIR=runtime/glib-2.0/schemas" >> dist/env.txt
 
       - name: Upload Build Artifacts
         uses: actions/upload-artifact@v3
@@ -108,5 +115,6 @@ jobs:
           path: |
             dist/OpenShockClock.exe
             dist/runtime/**
+            dist/env.txt
             README.md
             LICENSE
