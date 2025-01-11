@@ -36,7 +36,7 @@ jobs:
 
       - name: Build with PyInstaller
         run: |
-          pyinstaller --onefile --windowed --add-data "icons:icons" openshockclock.py
+          pyinstaller --onefile --windowed --add-data "icons:icons" openshockclock-gtk.py
 
       - name: Upload Build Artifacts
         uses: actions/upload-artifact@v3
